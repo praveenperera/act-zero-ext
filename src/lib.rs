@@ -11,7 +11,9 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut do_fn = input_fn.clone();
     let fn_name = &input_fn.sig.ident;
     let do_fn_name = format_ident!("do_{}", fn_name);
+
     do_fn.sig.ident = do_fn_name.clone();
+    do_fn.vis = syn::Visibility::Inherited;
 
     // Extract information for the wrapper function
     let vis = &input_fn.vis;
