@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "actor-macro"
+name = "act-zero-ext"
 version = "0.1.0"
 dependencies = [
  "act-zero",

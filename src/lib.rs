@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 use syn::{parse_macro_input, ItemFn, ReturnType};
 
 #[proc_macro_attribute]
-pub fn derive_actor(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the function
     let input_fn = parse_macro_input!(item as ItemFn);
 
