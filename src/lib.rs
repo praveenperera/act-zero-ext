@@ -1,72 +1,68 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, FnArg, ItemFn, Pat, ReturnType};
+use syn::{parse_macro_input, ItemFn, ReturnType};
 
 #[proc_macro_attribute]
 pub fn derive_actor(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    // Parse the input function
+    // Parse the function
     let input_fn = parse_macro_input!(item as ItemFn);
-    let vis = &input_fn.vis;
-    let sig = &input_fn.sig;
-    let body = &input_fn.block;
 
-    // Extract function details
-    let fn_name = &sig.ident;
+    // Clone for the do_ version
+    let mut do_fn = input_fn.clone();
+    let fn_name = &input_fn.sig.ident;
     let do_fn_name = format_ident!("do_{}", fn_name);
-    let inputs = &sig.inputs;
-    let asyncness = &sig.asyncness;
-    let generics = &sig.generics;
+    do_fn.sig.ident = do_fn_name.clone();
 
-    // Extract argument names for passing to the do_ function
-    let arg_names = inputs
-        .iter()
-        .filter_map(|arg| {
-            match arg {
-                FnArg::Receiver(_) => None, // Skip self in argument list
-                FnArg::Typed(pat_type) => {
-                    if let Pat::Ident(pat_ident) = &*pat_type.pat {
-                        Some(&pat_ident.ident)
-                    } else {
-                        None
-                    }
-                }
-            }
-        })
-        .collect::<Vec<_>>();
+    // Extract information for the wrapper function
+    let vis = &input_fn.vis;
+    let asyncness = &input_fn.sig.asyncness;
+    let generics = &input_fn.sig.generics;
+    let inputs = &input_fn.sig.inputs;
 
-    // Generate the public wrapper function
-    let output_type = match &sig.output {
+    // Extract return type for ActorResult wrapper
+    let return_type = match &input_fn.sig.output {
         ReturnType::Default => quote! { () },
         ReturnType::Type(_, ty) => quote! { #ty },
     };
 
+    // Get argument names for passing to do_ function
+    let arg_names = inputs
+        .iter()
+        .filter_map(|arg| {
+            if let syn::FnArg::Typed(pat_type) = arg {
+                if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
+                    if pat_ident.ident != "self" {
+                        return Some(&pat_ident.ident);
+                    }
+                }
+            }
+            None
+        })
+        .collect::<Vec<_>>();
+
+    // Create the wrapper function
     let wrapper_fn = if asyncness.is_some() {
         quote! {
-            #vis #asyncness fn #fn_name #generics (#inputs) -> ActorResult<#output_type> {
+            #vis #asyncness fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
                 let result = self.#do_fn_name(#(#arg_names),*).await;
-                Produces::ok(result)
+                act_zero::Produces::ok(result)
             }
         }
     } else {
         quote! {
-            #vis fn #fn_name #generics (#inputs) -> ActorResult<#output_type> {
+            #vis fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
                 let result = self.#do_fn_name(#(#arg_names),*);
-                Produces::ok(result)
+                act_zero::Produces::ok(result)
             }
         }
     };
 
-    // Generate the private implementation function
-    let impl_fn = quote! {
-        #vis #asyncness fn #do_fn_name #generics (#inputs) -> #sig.output {
-            #body
-        }
+    // Generate the final code
+    let result = quote! {
+        #wrapper_fn
+
+        #do_fn
     };
 
-    // Combine both functions
-    let expanded = quote! {
-        #impl_fn
-    };
-
-    expanded.into()
+    result.into()
 }
