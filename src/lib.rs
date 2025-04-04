@@ -38,27 +38,30 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the function
     let input_fn = parse_macro_input!(item as ItemFn);
 
-    // Clone for the do_ version
+    // clone for the do_ version
     let mut do_fn = input_fn.clone();
+
+    // change the function name to do_
     let fn_name = &input_fn.sig.ident;
     let do_fn_name = format_ident!("do_{}", fn_name);
-
     do_fn.sig.ident = do_fn_name.clone();
+
+    // make the do_ function private
     do_fn.vis = syn::Visibility::Inherited;
 
-    // Extract information for the wrapper function
+    // extract information for the wrapper function
     let vis = &input_fn.vis;
     let asyncness = &input_fn.sig.asyncness;
     let generics = &input_fn.sig.generics;
     let inputs = &input_fn.sig.inputs;
 
-    // Extract return type for ActorResult wrapper
+    // extract return type for ActorResult wrapper
     let return_type = match &input_fn.sig.output {
         ReturnType::Default => quote! { () },
         ReturnType::Type(_, ty) => quote! { #ty },
     };
 
-    // Get argument names for passing to do_ function
+    // get argument names for passing to do_ function
     let arg_names = inputs
         .iter()
         .filter_map(|arg| {
@@ -73,7 +76,7 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    // Create the wrapper function
+    // create the wrapper function
     let wrapper_fn = if asyncness.is_some() {
         quote! {
             #vis #asyncness fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
@@ -90,7 +93,7 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    // Generate the final code
+    // generate the final code
     let result = quote! {
         #wrapper_fn
 
