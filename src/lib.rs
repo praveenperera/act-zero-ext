@@ -1,12 +1,13 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, ItemFn, ReturnType};
+use syn::{ItemFn, ReturnType, parse_macro_input};
 
 /// Converts a function that returns a `Result<T,E>` into an a function that returns a `ActorResult<Result<T, E>>`
 ///
 /// Example:
 ///
 /// ```rust
+/// use act_zero::*;
 /// pub struct App {}
 ///
 /// impl App {
@@ -20,12 +21,13 @@ use syn::{parse_macro_input, ItemFn, ReturnType};
 /// Will be converted to:
 ///
 /// ```rust
+/// use act_zero::*;
 /// pub struct App {}
 ///
 /// impl App {
 ///     pub async fn hello(&self, name: String) -> ActorResult<Result<String, Box<dyn std::error::Error>>> {
 ///         let result = self.do_hello(name).await;
-///         Produces::Ok(result)
+///         Produces::ok(result)
 ///     }
 ///
 ///     async fn do_hello(&self, name: String) -> Result<String, Box<dyn std::error::Error>> {
