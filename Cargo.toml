@@ -1,9 +1,13 @@
 [package]
 name = "act-zero-ext"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
 description = "Macros for act-zero"
 license = "MIT"
+documentation = "https://docs.rs/act-zero-ext"
+repository = "https://github.com/praveen-reddy/act-zero-ext"
+keywords = ["actor", "actor-model", "async", "macro"]
+categories = ["asynchronous", "concurrency", "rust-patterns"]
 
 [lib]
 proc-macro = true
