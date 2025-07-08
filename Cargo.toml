@@ -2,6 +2,8 @@
 name = "act-zero-ext"
 version = "0.1.0"
 edition = "2021"
+description = "Macros for act-zero"
+license = "MIT"
 
 [lib]
 proc-macro = true
