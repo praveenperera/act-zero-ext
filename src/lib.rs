@@ -3,6 +3,7 @@ use quote::{format_ident, quote};
 use syn::{ItemFn, ReturnType, parse_macro_input};
 
 /// Converts a function that returns a `Result<T,E>` into an a function that returns a `ActorResult<Result<T, E>>`
+/// Also works with Option<T> will return `ActorResult<Option<T>>`
 ///
 /// Example:
 ///
@@ -32,6 +33,46 @@ use syn::{ItemFn, ReturnType, parse_macro_input};
 ///
 ///     async fn do_hello(&self, name: String) -> Result<String, Box<dyn std::error::Error>> {
 ///         Ok(format!("Hello, {}!", name))
+///     }
+/// }
+/// ```
+///
+/// Example with Option:
+///
+/// ```rust
+/// use act_zero::*;
+/// pub struct App {}
+///
+/// impl App {
+///     #[act_zero_ext::into_actor_result]
+///     async fn find_user(&self, id: u64) -> Option<String> {
+///         if id > 0 {
+///             Some(format!("User {}", id))
+///         } else {
+///             None
+///         }
+///     }
+/// }
+/// ```
+///
+/// Will be converted to:
+///
+/// ```rust
+/// use act_zero::*;
+/// pub struct App {}
+///
+/// impl App {
+///     pub async fn find_user(&self, id: u64) -> ActorResult<Option<String>> {
+///         let result = self.do_find_user(id).await;
+///         Produces::ok(result)
+///     }
+///
+///     async fn do_find_user(&self, id: u64) -> Option<String> {
+///         if id > 0 {
+///             Some(format!("User {}", id))
+///         } else {
+///             None
+///         }
 ///     }
 /// }
 /// ```
@@ -67,38 +108,28 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let arg_names = inputs
         .iter()
         .filter_map(|arg| {
-            if let syn::FnArg::Typed(pat_type) = arg {
-                if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
-                    if pat_ident.ident != "self" {
-                        return Some(&pat_ident.ident);
-                    }
-                }
+            if let syn::FnArg::Typed(pat_type) = arg
+                && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
+                && pat_ident.ident != "self"
+            {
+                return Some(&pat_ident.ident);
             }
             None
         })
         .collect::<Vec<_>>();
 
-    // create the wrapper function
-    let wrapper_fn = if asyncness.is_some() {
-        quote! {
-            #vis #asyncness fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
-                let result = self.#do_fn_name(#(#arg_names),*).await;
-                act_zero::Produces::ok(result)
-            }
-        }
-    } else {
-        quote! {
-            #vis fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
-                let result = self.#do_fn_name(#(#arg_names),*);
-                act_zero::Produces::ok(result)
-            }
+    let awaiter = asyncness.is_some().then(|| quote!(.await));
+
+    let wrapper_fn = quote! {
+        #vis async fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
+            let result = self.#do_fn_name(#(#arg_names),*) #awaiter;
+            act_zero::Produces::ok(result)
         }
     };
 
     // generate the final code
     let result = quote! {
         #wrapper_fn
-
         #do_fn
     };
 

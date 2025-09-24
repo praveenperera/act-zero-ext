@@ -1,6 +1,6 @@
 [package]
 name = "act-zero-ext"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 description = "Macros for act-zero"
 license = "MIT"
