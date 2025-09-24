@@ -3,6 +3,7 @@ use quote::{format_ident, quote};
 use syn::{ItemFn, ReturnType, parse_macro_input};
 
 /// Converts a function that returns a `Result<T,E>` into an a function that returns a `ActorResult<Result<T, E>>`
+/// Also works with Option<T> will return `ActorResult<Option<T>>`
 ///
 /// Example:
 ///
