@@ -36,6 +36,46 @@ use syn::{ItemFn, ReturnType, parse_macro_input};
 ///     }
 /// }
 /// ```
+///
+/// Example with Option:
+///
+/// ```rust
+/// use act_zero::*;
+/// pub struct App {}
+///
+/// impl App {
+///     #[act_zero_ext::into_actor_result]
+///     async fn find_user(&self, id: u64) -> Option<String> {
+///         if id > 0 {
+///             Some(format!("User {}", id))
+///         } else {
+///             None
+///         }
+///     }
+/// }
+/// ```
+///
+/// Will be converted to:
+///
+/// ```rust
+/// use act_zero::*;
+/// pub struct App {}
+///
+/// impl App {
+///     pub async fn find_user(&self, id: u64) -> ActorResult<Option<String>> {
+///         let result = self.do_find_user(id).await;
+///         Produces::ok(result)
+///     }
+///
+///     async fn do_find_user(&self, id: u64) -> Option<String> {
+///         if id > 0 {
+///             Some(format!("User {}", id))
+///         } else {
+///             None
+///         }
+///     }
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the function
@@ -70,9 +110,10 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .filter_map(|arg| {
             if let syn::FnArg::Typed(pat_type) = arg
                 && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
-                    && pat_ident.ident != "self" {
-                        return Some(&pat_ident.ident);
-                    }
+                && pat_ident.ident != "self"
+            {
+                return Some(&pat_ident.ident);
+            }
             None
         })
         .collect::<Vec<_>>();
