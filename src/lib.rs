@@ -68,13 +68,11 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let arg_names = inputs
         .iter()
         .filter_map(|arg| {
-            if let syn::FnArg::Typed(pat_type) = arg {
-                if let syn::Pat::Ident(pat_ident) = &*pat_type.pat {
-                    if pat_ident.ident != "self" {
+            if let syn::FnArg::Typed(pat_type) = arg
+                && let syn::Pat::Ident(pat_ident) = &*pat_type.pat
+                    && pat_ident.ident != "self" {
                         return Some(&pat_ident.ident);
                     }
-                }
-            }
             None
         })
         .collect::<Vec<_>>();
