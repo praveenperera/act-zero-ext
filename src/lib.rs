@@ -78,27 +78,18 @@ pub fn into_actor_result(_attr: TokenStream, item: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    // create the wrapper function
-    let wrapper_fn = if asyncness.is_some() {
-        quote! {
-            #vis #asyncness fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
-                let result = self.#do_fn_name(#(#arg_names),*).await;
-                act_zero::Produces::ok(result)
-            }
-        }
-    } else {
-        quote! {
-            #vis fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
-                let result = self.#do_fn_name(#(#arg_names),*);
-                act_zero::Produces::ok(result)
-            }
+    let awaiter = asyncness.is_some().then(|| quote!(.await));
+
+    let wrapper_fn = quote! {
+        #vis async fn #fn_name #generics (#inputs) -> act_zero::ActorResult<#return_type> {
+            let result = self.#do_fn_name(#(#arg_names),*) #awaiter;
+            act_zero::Produces::ok(result)
         }
     };
 
     // generate the final code
     let result = quote! {
         #wrapper_fn
-
         #do_fn
     };
 
